@@ -1,0 +1,42 @@
+groups:
+  - name: raspberrypi-alerts
+    rules:
+      # CPU alta (média de 5 minutos acima de 85%)
+      - alert: HighCPUUsage
+        expr: avg(rate(node_cpu_seconds_total{mode!="idle"}[5m])) * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Uso alto de CPU no Raspberry"
+          description: "CPU acima de 85% por mais de 5 minutos. Valor atual: {{ $value | printf \"%.2f\" }}%"
+
+      # RAM alta (usando mem disponível/total)
+      - alert: HighMemoryUsage
+        expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Uso alto de memória no Raspberry"
+          description: "Memória em uso acima de 85% por mais de 5 minutos. Valor atual: {{ $value | printf \"%.2f\" }}%"
+
+      # Disco raiz quase cheio (partition '/')
+      - alert: HighDiskUsageRoot
+        expr: (node_filesystem_size_bytes{mountpoint="/",fstype!~"tmpfs|overlay"} - node_filesystem_free_bytes{mountpoint="/",fstype!~"tmpfs|overlay"}) / node_filesystem_size_bytes{mountpoint="/",fstype!~"tmpfs|overlay"} * 100 > 80
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Uso alto de disco na raiz (/)"
+          description: "Partição raiz (/) acima de 80% por mais de 10 minutos. Valor atual: {{ $value | printf \"%.2f\" }}%"
+
+      # Temperatura alta
+      - alert: HighTemperature
+        expr: node_hwmon_temp_celsius > 70
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Temperatura alta no Raspberry"
+          description: "Temperatura acima de 70°C por mais de 2 minutos. Valor atual: {{ $value | printf \"%.2f\" }}°C"

@@ -1,0 +1,17 @@
+{{ define "discord.title" }}
+[{{ .Status | toUpper }}] {{ (index .Alerts 0).Labels.alertname }} - {{ (index .Alerts 0).Labels.severity | toUpper }}
+{{ end }}
+
+{{ define "discord.text" }}
+{{ range .Alerts }}
+*Alert:* `{{ .Labels.alertname }}`  
+*Instância:* `{{ .Labels.instance }}`  
+*Severidade:* `{{ .Labels.severity }}`  
+*Descrição:* {{ .Annotations.description }}  
+
+*Início:* {{ .StartsAt }}  
+{{ if .EndsAt }}*Fim:* {{ .EndsAt }}{{ end }}
+
+---
+{{ end }}
+{{ end }}
