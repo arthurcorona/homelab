@@ -56,7 +56,7 @@ services:
       - "3000:3000"
     environment:
       - GF_SECURITY_ADMIN_USER=admin
-      - GF_SECURITY_ADMIN_PASSWORD=admin   # troque depois!
+      - GF_SECURITY_ADMIN_PASSWORD=admin   # vai pedir pra mudar automaticamente no primeiro acesso
     volumes:
       - grafana-data:/var/lib/grafana
     depends_on:

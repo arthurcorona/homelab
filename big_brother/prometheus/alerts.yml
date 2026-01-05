@@ -33,10 +33,13 @@ groups:
 
       # Temperatura alta
       - alert: HighTemperature
-        expr: node_hwmon_temp_celsius > 70
+        expr: node_hwmon_temp_celsius > 30
         for: 2m
         labels:
           severity: critical
         annotations:
           summary: "Temperatura alta no Raspberry"
           description: "Temperatura acima de 70°C por mais de 2 minutos. Valor atual: {{ $value | printf \"%.2f\" }}°C"
+
+
+#
