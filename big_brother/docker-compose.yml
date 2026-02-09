@@ -61,6 +61,20 @@ services:
       - grafana-data:/var/lib/grafana
     depends_on:
       - prometheus
+      
+  cadvisor:
+      image: gcr.io/cadvisor/cadvisor:v0.49.1 # Versão estável para ARM64
+      container_name: cadvisor
+      restart: unless-stopped
+      privileged: true
+      volumes:
+        - /:/rootfs:ro
+        - /var/run:/var/run:ro
+        - /sys:/sys:ro
+        - /var/lib/docker/:/var/lib/docker:ro
+        - /dev/disk/:/dev/disk:ro
+      ports:
+        - "8080:8080"
 
 volumes:
   prometheus-data:
