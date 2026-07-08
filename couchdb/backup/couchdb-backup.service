@@ -1,0 +1,10 @@
+[Unit]
+Description=Backup do CouchDB (Obsidian LiveSync)
+Documentation=file:/home/homelab/docker/couchdb/README.md
+OnFailure=couchdb-backup-alert.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/couchdb-backup.sh
+Nice=10
+IOSchedulingClass=idle

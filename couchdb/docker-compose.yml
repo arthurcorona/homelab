@@ -1,0 +1,21 @@
+services:
+  couchdb:
+    image: couchdb:3
+    container_name: couchdb
+    restart: unless-stopped
+    environment:
+      - COUCHDB_USER=${COUCHDB_USER}
+      - COUCHDB_PASSWORD=${COUCHDB_PASSWORD}
+    ports:
+      # Amarrado SÓ no loopback: nunca exposto na LAN nem na internet.
+      # Quem publica via HTTPS é o `tailscale serve` (porta 8443 da tailnet).
+      - "127.0.0.1:5984:5984"
+    volumes:
+      - ./data:/opt/couchdb/data
+      - ./etc/local.ini:/opt/couchdb/etc/local.d/10-livesync.ini:ro
+    healthcheck:
+      # require_valid_user=true faz /_up exigir auth; usamos as próprias credenciais do container.
+      test: ["CMD-SHELL", "curl -sf http://$$COUCHDB_USER:$$COUCHDB_PASSWORD@localhost:5984/_up"]
+      interval: 30s
+      timeout: 10s
+      retries: 5

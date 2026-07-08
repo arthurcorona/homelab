@@ -1,0 +1,9 @@
+[Unit]
+Description=Agenda diária do backup do CouchDB (03:23)
+
+[Timer]
+OnCalendar=*-*-* 03:23:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

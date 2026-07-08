@@ -1,0 +1,6 @@
+[Unit]
+Description=Notifica Alertmanager/Discord sobre falha no backup do CouchDB
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/couchdb-backup-alert.sh

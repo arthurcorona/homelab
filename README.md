@@ -15,6 +15,10 @@
 ![Nginx](https://img.shields.io/badge/-Nginx-009639?style=for-the-badge&logo=nginx&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/-PostgreSQL-336791?style=for-the-badge&logo=postgresql&logoColor=white)
 ![n8n](https://img.shields.io/badge/-n8n-EA4B71?style=for-the-badge&logo=n8n&logoColor=white)
+![Nextcloud](https://img.shields.io/badge/-Nextcloud-0082C9?style=for-the-badge&logo=nextcloud&logoColor=white)
+![CouchDB](https://img.shields.io/badge/-CouchDB-E42528?style=for-the-badge&logo=apachecouchdb&logoColor=white)
+![Cloudflare](https://img.shields.io/badge/-Cloudflare_Tunnel-F38020?style=for-the-badge&logo=cloudflare&logoColor=white)
+![Tailscale](https://img.shields.io/badge/-Tailscale-242424?style=for-the-badge&logo=tailscale&logoColor=white)
 
 Bem-vindo ao repositório de Infraestrutura do meu **Homelab**. Este repositório contém a configuração de **Infrastructure as Code** (IaC) utilizada para provisionar e manter meu servidor doméstico.
 
@@ -39,11 +43,13 @@ O servidor roda em um Single Board Computer com boot nativo via USB 3.0 para mai
 
 > **Nota:** Este repositório não contém arquivos `.env` ou senhas reais.
 
-Para replicar este ambiente, é necessário criar um arquivo `.env` em cada diretório de serviço com as seguintes variáveis:
+Para replicar este ambiente, é necessário criar um arquivo `.env` em cada diretório de serviço com as seguintes variáveis (veja os `.env.example` de cada stack):
 * `POSTGRES_USER`
 * `POSTGRES_PASSWORD`
 * `N8N_BASIC_AUTH_PASSWORD` (se aplicável)
 * `GRAFANA_ADMIN_PASSWORD`
+* `COUCHDB_USER` / `COUCHDB_PASSWORD` (stack `couchdb/`)
+* `NEXTCLOUD_DB_PASSWORD` / `NEXTCLOUD_ADMIN_USER` / `NEXTCLOUD_ADMIN_PASSWORD` (stack `nextcloud/`)
 
 ---
 
@@ -61,6 +67,8 @@ Visão geral dos serviços expostos e suas respectivas portas no Docker Host.
 | **Prometheus** | Monitoring | 9090 | **9090** | `http://<IP_LOCAL>:9090` |
 | **Alert Manager** | Monitoring | 9093 | **9093** | `http://<IP_LOCAL>:9093` |
 | **Portainer** | Management | 9000 | **9000** | `http://<IP_LOCAL>:9000` |
+| **Nextcloud** | Cloud pessoal | 80 | **127.0.0.1:8082** | `https://cloud.seudominio.com` (via Cloudflare Tunnel) |
+| **CouchDB** | Sync (Obsidian LiveSync) | 5984 | **127.0.0.1:5984** | `https://sua-tailnet.ts.net:8443` (via `tailscale serve`) |
 
 ---
 
@@ -90,6 +98,15 @@ A organização segue o padrão de microserviços, onde cada stack possui seu pr
 │   ├── prometheus/
 │   └── docker-compose.yml
 │
+├── couchdb/              # 🔄 CouchDB (Obsidian Self-hosted LiveSync)
+│   ├── backup/           # scripts + systemd units (timer + alerta)
+│   ├── etc/local.ini
+│   └── docker-compose.yml
+│
+├── nextcloud/            # ☁️ Nuvem Privada (Nextcloud + Redis + cron)
+│   ├── html/             # app (não versionado)
+│   └── docker-compose.yml
+│
 └── scripts/              # ⚙️ Manutenção e Utilitários
     └── fan_control.py
 ```
@@ -110,6 +127,18 @@ Stack de observabilidade com:
 - **Prometheus:** Coleta métricas
 - **Node Exporter:** Monitora hardware (CPU/RAM/Temperatura)
 - **Grafana:** Visualização de dados
+
+### 4. Nuvem Privada (Nextcloud)
+- **Função:** Cloud storage pessoal (arquivos, fotos, contatos, calendário) via app mobile/desktop
+- **Stack:** Nextcloud (imagem oficial pinada) + Redis (locking/cache) + container de cron
+- **Banco:** Postgres compartilhado, com role/database dedicados (`nextcloud`)
+- **Exposição:** só `127.0.0.1`, publicado via **Cloudflare Tunnel** — nenhuma porta aberta no roteador
+- **Dados:** em disco separado do disco de sistema (bind mount)
+
+### 5. Sincronização (CouchDB + Obsidian LiveSync)
+- **Função:** backend de sincronização E2E-criptografada para o plugin Obsidian Self-hosted LiveSync
+- **Exposição:** só `127.0.0.1`, publicado **apenas na tailnet** via `tailscale serve` (HTTPS)
+- **Backup:** systemd timer diário (backup a quente + retenção + verificação sha256), com alerta de falha via Alertmanager/Discord — ver `couchdb/README.md`
 
 ---
 
