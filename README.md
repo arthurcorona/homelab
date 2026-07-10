@@ -14,7 +14,6 @@
 ![Linux](https://img.shields.io/badge/-Linux-FCC624?style=for-the-badge&logo=linux&logoColor=black)
 ![Nginx](https://img.shields.io/badge/-Nginx-009639?style=for-the-badge&logo=nginx&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/-PostgreSQL-336791?style=for-the-badge&logo=postgresql&logoColor=white)
-![n8n](https://img.shields.io/badge/-n8n-EA4B71?style=for-the-badge&logo=n8n&logoColor=white)
 ![Nextcloud](https://img.shields.io/badge/-Nextcloud-0082C9?style=for-the-badge&logo=nextcloud&logoColor=white)
 ![CouchDB](https://img.shields.io/badge/-CouchDB-E42528?style=for-the-badge&logo=apachecouchdb&logoColor=white)
 ![Cloudflare](https://img.shields.io/badge/-Cloudflare_Tunnel-F38020?style=for-the-badge&logo=cloudflare&logoColor=white)
@@ -46,7 +45,6 @@ O servidor roda em um Single Board Computer com boot nativo via USB 3.0 para mai
 Para replicar este ambiente, é necessário criar um arquivo `.env` em cada diretório de serviço com as seguintes variáveis (veja os `.env.example` de cada stack):
 * `POSTGRES_USER`
 * `POSTGRES_PASSWORD`
-* `N8N_BASIC_AUTH_PASSWORD` (se aplicável)
 * `GRAFANA_ADMIN_PASSWORD`
 * `COUCHDB_USER` / `COUCHDB_PASSWORD` (stack `couchdb/`)
 * `NEXTCLOUD_DB_PASSWORD` / `NEXTCLOUD_ADMIN_USER` / `NEXTCLOUD_ADMIN_PASSWORD` (stack `nextcloud/`)
@@ -55,20 +53,24 @@ Para replicar este ambiente, é necessário criar um arquivo `.env` em cada dire
 
 ## 🗺️ Mapa de Portas (Port Map)
 
-Visão geral dos serviços expostos e suas respectivas portas no Docker Host.
+**Modelo de exposição:** nada é público por porta. Acesso público = Cloudflare
+Tunnel (conexão de saída — zero port-forward no roteador). Acesso pessoal/admin
+= tailnet (`tailscale serve`). A LAN só enxerga o proxy e o SSH; todo o resto
+vive em `127.0.0.1` (loopback), protegido por UFW + chain `DOCKER-USER`
+(ver `firewall/`).
 
-| Serviço | Stack | Porta Interna | **Porta Host** | Acesso (Exemplo) |
-| :--- | :--- | :--- | :--- | :--- |
-| **Nginx Proxy Manager** | Gateway | 80, 443 | **80, 443** | `https://seu-dominio.com` |
-| **Nginx Admin** | Gateway | 81 | **81** | `http://<IP_LOCAL>:81` |
-| **n8n Workflow** | Automation | 5678 | **5678** | `https://n8n.seu-dominio.com` |
-| **Postgres (Main)** | Database | 5432 | **5432** | `jdbc:postgresql://<IP_LOCAL>:5432` |
-| **Grafana** | Monitoring | 3000 | **3000** | `http://<IP_LOCAL>:3000` |
-| **Prometheus** | Monitoring | 9090 | **9090** | `http://<IP_LOCAL>:9090` |
-| **Alert Manager** | Monitoring | 9093 | **9093** | `http://<IP_LOCAL>:9093` |
-| **Portainer** | Management | 9000 | **9000** | `http://<IP_LOCAL>:9000` |
-| **Nextcloud** | Cloud pessoal | 80 | **127.0.0.1:8082** | `https://cloud.seudominio.com` (via Cloudflare Tunnel) |
-| **CouchDB** | Sync (Obsidian LiveSync) | 5984 | **127.0.0.1:5984** | `https://sua-tailnet.ts.net:8443` (via `tailscale serve`) |
+| Serviço | Stack | Bind no Host | Acesso |
+| :--- | :--- | :--- | :--- |
+| **Nginx Proxy Manager** | Gateway | `0.0.0.0:80/443` | LAN (proxies internos) |
+| **NPM Admin (81)** | Gateway | `127.0.0.1:81` | tailnet `:8445` |
+| **Postgres (Main)** | Database | *(sem porta)* | só rede docker `proxy-net`; admin via `docker exec` |
+| **Grafana** | Monitoring | `127.0.0.1:3000` | tailnet `:8444` |
+| **Prometheus** | Monitoring | `127.0.0.1:9090` | local (sem auth ⇒ nunca expor) |
+| **Alertmanager** | Monitoring | `127.0.0.1:9093` | local (alertas saem p/ Discord) |
+| **cAdvisor / node-exporter** | Monitoring | `127.0.0.1:8080/9100` | só o Prometheus consome |
+| **Portainer** | Management | `127.0.0.1:9443` | tailnet `:8446` |
+| **Nextcloud** | Cloud pessoal | `127.0.0.1:8082` | `https://cloud.seudominio.com` (Cloudflare Tunnel) |
+| **CouchDB** | Sync (Obsidian) | `127.0.0.1:5984` | tailnet `:8443` (`tailscale serve`) |
 
 ---
 
@@ -78,37 +80,30 @@ A organização segue o padrão de microserviços, onde cada stack possui seu pr
 
 ```plaintext
 /home/user/homelab/
-├── npm/                  # 🛡️ Nginx Proxy Manager (Reverse Proxy & SSL)
-│   ├── data/
-│   ├── letsencrypt/
-│   └── docker-compose.yml
+├── nginx/                # 🛡️ Nginx Proxy Manager (Reverse Proxy & SSL)
+│   └── docker-compose.yml         # data/ e letsencrypt/ não versionados
 │
-├── postgres/             # 🐘 Banco de Dados Compartilhado (Dev & Apps)
-│   ├── data/
-│   └── docker-compose.yml
+├── postgres/             # 🐘 Banco Compartilhado (role dedicado por app)
+│   ├── docker-compose.yml         # sem porta publicada
+│   └── .env.example
 │
-├── n8n/                  # 🤖 Automação Low-Code
-│   ├── volumes/
-│   │   ├── db_data/      # Postgres dedicado ao n8n
-│   │   └── n8n_data/     # Dados de Workflows
-│   └── docker-compose.yml
-│
-├── monitoring/           # 👁️ Observabilidade (Prometheus Stack)
-│   ├── grafana/
-│   ├── prometheus/
+├── big_brother/          # 👁️ Observabilidade (Prometheus Stack)
+│   ├── prometheus/                # prometheus.yml + alerts.yml
+│   ├── alertmanager/              # rota → Discord (webhook via placeholder)
 │   └── docker-compose.yml
 │
 ├── couchdb/              # 🔄 CouchDB (Obsidian Self-hosted LiveSync)
-│   ├── backup/           # scripts + systemd units (timer + alerta)
+│   ├── backup/           # scripts + systemd units (timer + alerta + métricas)
 │   ├── etc/local.ini
 │   └── docker-compose.yml
 │
 ├── nextcloud/            # ☁️ Nuvem Privada (Nextcloud + Redis + cron)
-│   ├── html/             # app (não versionado)
-│   └── docker-compose.yml
+│   └── docker-compose.yml         # html/ e dados não versionados
 │
-└── scripts/              # ⚙️ Manutenção e Utilitários
-    └── fan_control.py
+└── firewall/             # 🔥 Contenção Docker×UFW (chain DOCKER-USER)
+    ├── docker-user-rules.sh       # fonte canônica das regras
+    ├── docker-user.service        # reaplica no boot (systemd)
+    └── install.sh
 ```
 ## Detalhes das Stacks
 
@@ -117,10 +112,13 @@ A organização segue o padrão de microserviços, onde cada stack possui seu pr
 - **Rede Docker:** `proxy-net` (Externa)
 - **Status:** 🟢 Ativo
 
-### 2. Automação (n8n)
-- **Função:** Motor de workflows com banco Postgres dedicado (`n8n-postgres`)
-- **Autenticação:** Owner Account (Email/Senha)
-- **Dependência:** Conectado à rede `proxy-net` para acesso via Nginx
+### 2. Firewall em camadas (UFW + DOCKER-USER)
+- **Problema que resolve:** o Docker escreve regras no iptables ANTES do UFW —
+  portas publicadas por containers ignoram o firewall do host.
+- **Solução:** binds em `127.0.0.1` por padrão + UFW pros serviços do host +
+  regras na chain `DOCKER-USER` (a única que o Docker respeita) limitando
+  tráfego da LAN aos containers a 80/443. Erro de compose futuro fica contido.
+- **Persistência:** unit systemd reaplica as regras a cada boot/restart do Docker.
 
 ### 3. Monitoramento (Big Brother)
 Stack de observabilidade com:

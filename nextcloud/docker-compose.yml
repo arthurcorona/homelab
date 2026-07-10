@@ -6,7 +6,7 @@ services:
     depends_on:
       - nextcloud-redis
     ports:
-      # Só loopback: quem publica é o Cloudflare Tunnel (cloud.seudominio.com)
+      # Só loopback: quem publica é o Cloudflare Tunnel (cloud.seudominio.com.br)
       - "127.0.0.1:8082:80"
     environment:
       POSTGRES_HOST: postgres_homelab
@@ -16,17 +16,17 @@ services:
       REDIS_HOST: nextcloud-redis
       NEXTCLOUD_ADMIN_USER: ${NEXTCLOUD_ADMIN_USER}
       NEXTCLOUD_ADMIN_PASSWORD: ${NEXTCLOUD_ADMIN_PASSWORD}
-      NEXTCLOUD_TRUSTED_DOMAINS: cloud.seudominio.com
+      NEXTCLOUD_TRUSTED_DOMAINS: cloud.seudominio.com.br
       OVERWRITEPROTOCOL: https
-      OVERWRITEHOST: cloud.seudominio.com
-      OVERWRITECLIURL: https://cloud.seudominio.com
+      OVERWRITEHOST: cloud.seudominio.com.br
+      OVERWRITECLIURL: https://cloud.seudominio.com.br
       # cloudflared chega via docker-proxy; o IP de origem visto é o gateway da bridge
       TRUSTED_PROXIES: 172.16.0.0/12
       PHP_MEMORY_LIMIT: 512M
       PHP_UPLOAD_LIMIT: 10G
     volumes:
       - ./html:/var/www/html                          # app no SSD (rápido)
-      - /mnt/dados-2tb/nextcloud-data:/var/www/html/data  # DADOS no HD dedicado
+      - /mnt/dados-2tb/nextcloud-data:/var/www/html/data  # DADOS no HD de 2TB
     networks:
       - proxy-net   # p/ alcançar o postgres_homelab
       - default     # p/ alcançar o redis

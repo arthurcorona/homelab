@@ -1,18 +1,23 @@
 services:
   postgres-db:
     image: postgres:16-alpine
-    container_name: postgres_homelab 
+    container_name: postgres_homelab
     restart: always
     environment:
-      POSTGRES_USER: nome_do_user
-      POSTGRES_PASSWORD: senha_top
-      POSTGRES_DB: nome_do_db_main
-    ports:
-      - "5432:5432"
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: homelab_global
+    # SEM bloco ports: — apps alcançam via rede docker (proxy-net).
+    # Admin: docker exec -it postgres_homelab psql -U $POSTGRES_USER -d homelab_global
     volumes:
       - ./data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U admin -d homelab_global"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d homelab_global"]
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - proxy-net
+networks:
+  proxy-net:
+    external: true

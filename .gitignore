@@ -1,0 +1,16 @@
+# secrets — NUNCA commitar
+.env
+*.env
+!*.env.example
+!.env.example
+
+# dados e volumes de runtime
+*/data/
+*/volumes/
+nextcloud/html/
+nginx/letsencrypt/
+
+# backups e temporários
+*.bak
+*.sql
+*.tar.gz

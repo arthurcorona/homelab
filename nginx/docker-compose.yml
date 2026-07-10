@@ -6,7 +6,7 @@ services:
     ports:
       - '80:80'
       - '443:443'
-      - '81:81'   # Painel Admin (Só Rede Interna)
+      - '127.0.0.1:81:81'   # Painel Admin (Só Rede Interna)
     volumes:
       - ./data:/data
       - ./letsencrypt:/etc/letsencrypt
@@ -16,5 +16,3 @@ services:
 networks:
   proxy-net:
     external: true
-
-

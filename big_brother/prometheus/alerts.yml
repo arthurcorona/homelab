@@ -33,7 +33,7 @@ groups:
 
       # Temperatura alta
       - alert: HighTemperature
-        expr: node_hwmon_temp_celsius > 30
+        expr: node_hwmon_temp_celsius > 70
         for: 2m
         labels:
           severity: critical
@@ -41,5 +41,25 @@ groups:
           summary: "Temperatura alta no Raspberry"
           description: "Temperatura acima de 70°C por mais de 2 minutos. Valor atual: {{ $value | printf \"%.2f\" }}°C"
 
+  - name: backup-alerts
+    rules:
+      # Dead man's switch: nenhum backup com sucesso há mais de 26h
+      # (cadência é 24h; 26h dá folga sem mascarar falha real).
+      - alert: CouchDBBackupStale
+        expr: time() - couchdb_backup_last_success_timestamp_seconds > 26 * 3600
+        for: 10m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Backup do CouchDB atrasado ou ausente"
+          description: "Sem backup bem-sucedido há mais de 26h. Verifique: journalctl -u couchdb-backup.service"
 
-#
+      # A última execução do backup terminou em falha
+      - alert: CouchDBBackupFailedLastRun
+        expr: couchdb_backup_success == 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Última execução do backup do CouchDB falhou"
+          description: "couchdb-backup.service terminou com erro na última rodada. Verifique: journalctl -u couchdb-backup.service"

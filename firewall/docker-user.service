@@ -1,0 +1,13 @@
+[Unit]
+Description=Regras de contenção na chain DOCKER-USER (LAN -> containers: só 80/443)
+Documentation=file:/home/homelab/docker/firewall/README.md
+After=docker.service
+BindsTo=docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/bin/docker-user-rules.sh
+
+[Install]
+WantedBy=multi-user.target
