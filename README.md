@@ -40,14 +40,24 @@ O servidor roda em um Single Board Computer com boot nativo via USB 3.0 para mai
 
 ## 🔐 Segurança e Credenciais
 
-> **Nota:** Este repositório não contém arquivos `.env` ou senhas reais.
+> **Nota:** Este repositório não contém arquivos `.env` ou senhas reais — os
+> composes referenciam variáveis (`${VAR}`) resolvidas por um `.env` local.
 
-Para replicar este ambiente, é necessário criar um arquivo `.env` em cada diretório de serviço com as seguintes variáveis (veja os `.env.example` de cada stack):
-* `POSTGRES_USER`
-* `POSTGRES_PASSWORD`
-* `GRAFANA_ADMIN_PASSWORD`
-* `COUCHDB_USER` / `COUCHDB_PASSWORD` (stack `couchdb/`)
-* `NEXTCLOUD_DB_PASSWORD` / `NEXTCLOUD_ADMIN_USER` / `NEXTCLOUD_ADMIN_PASSWORD` (stack `nextcloud/`)
+**Padrão adotado:** cada stack tem seu próprio `.env` (com `chmod 600`, fora do
+git — ver `.gitignore`) e um `.env.example` versionado documentando o contrato.
+Senhas nunca são reutilizadas entre serviços.
+
+| Stack | `.env` local (600) | Variáveis (ver `.env.example`) |
+| :--- | :--- | :--- |
+| `postgres/` | ✅ | `POSTGRES_USER`, `POSTGRES_PASSWORD` |
+| `big_brother/` | ✅ | `GRAFANA_ADMIN_USER`, `GRAFANA_ADMIN_PASSWORD` (só 1º boot) |
+| `couchdb/` | ✅ | `COUCHDB_USER`, `COUCHDB_PASSWORD` |
+| `nextcloud/` | ✅ | `NEXTCLOUD_DB_PASSWORD`, `NEXTCLOUD_ADMIN_USER`, `NEXTCLOUD_ADMIN_PASSWORD` |
+
+**Exceção documentada:** `big_brother/alertmanager/alertmanager.yml` contém o
+webhook do Discord e o Alertmanager não interpola variáveis de ambiente — a
+proteção lá é permissão de arquivo (`chmod 600`, dono = uid do container).
+O arquivo versionado aqui usa placeholder.
 
 ---
 
